@@ -1,83 +1,164 @@
 # AmpSwitch
-Universal amplifier power control for Volumio, Moode & MPD
 
-AmpSwitch is a lightweight, hardware-safe daemon that automatically powers your audio amplifier only when music is playing.
+Simple, reliable amplifier power control for Volumio using Raspberry Pi GPIO.
 
-It monitors the playback state of popular Linux audio players and controls one or more GPIO-connected relays to emulate an amplifier’s power button or enable line — with proper delays, sequencing, and startup safety.
+AmpSwitch monitors Volumio playback state and controls a relay (or relays) to:
+- turn an amplifier ON when music starts
+- turn it OFF after music stops (with delay)
+- avoid relay chatter during track changes
 
-Designed for real Hi-Fi setups, not just hobby demos.
-
----
-
-## Features
-
-- Auto-detects audio player
-  - Volumio (REST API)
-  - MPD (Moode, RuneAudio, plain MPD)
-
-- Relay control modes
-  - Toggle mode – pulse relay to emulate power button (ON / OFF)
-  - Hold mode – relay stays ON while music plays
-
-- Smart stop delay
-  - Prevents relay chatter during track changes, Spotify gaps, radio buffering
-
-- Multi-relay sequencing (optional)
-  - Power devices in order (DAC → preamp → power amp)
-  - Reverse order on shutdown
-
-- Startup safe
-  - No relay action on boot
-  - Optional Force OFF only when running as a background service
-
-- Interactive test mode
-  - Test behavior safely before installing as a service
-
-- Clean uninstall
-  - Available only when rerunning the script interactively
-
-- No plugins, no MQTT, no Home Assistant required
-  - Works standalone
-  - Service-grade reliability
+This script is designed for real hardware, not demos.
 
 ---
 
-## Why AmpSwitch?
+## Key Features
 
-Most DIY amp control scripts:
-- toggle relays on startup
-- chatter between tracks
-- break when switching players
+- Volumio-native GPIO control  
+  - Uses raspi-gpio only (no sysfs, no gpiod)  
+  - Matches how Volumio plugins handle GPIO  
+  - Works reliably on Volumio 3.x and newer  
 
-AmpSwitch is edge-triggered, delay-aware, and player-agnostic — meaning:
+- Edge-triggered playback detection  
+  - Relay turns ON only on STOP → PLAY  
+  - Relay turns OFF only after confirmed stop + delay  
 
-The amp turns ON only when playback actually starts,  
-and turns OFF only when playback really stops.
+- Relay modes  
+  - Toggle mode – pulse relay to emulate a power button  
+  - Hold mode – keep relay ON while music is playing  
 
-This matches the behavior of commercial audio controllers.
+- Stop delay  
+  - Prevents relay chatter during:  
+    - track changes  
+    - Spotify gaps  
+    - radio buffering  
+
+- Interactive test mode  
+  - Safe testing without installing a service  
+  - CTRL+C exits test mode and returns to menu  
+
+- Systemd service support  
+  - Optional background service  
+  - Starts automatically on boot  
+
+- Built-in management  
+  - Reconfigure / Test  
+  - Show current active config  
+  - Uninstall (clean removal)  
 
 ---
 
 ## Requirements
 
-- Raspberry Pi (or compatible Linux SBC)
-- GPIO-connected relay (optocoupled recommended)
-- One of:
-  - Volumio
-  - Moode Audio
-  - RuneAudio
-  - Any MPD-based setup
+- Raspberry Pi  
+- Volumio OS  
+- GPIO relay module  
+- raspi-gpio (included with Volumio)  
+- curl and jq (included with Volumio)  
 
-Dependencies are installed automatically:
-- gpiod
-- curl, jq (Volumio)
-- mpc (MPD)
+This script intentionally does NOT use:
+- /sys/class/gpio  
+- libgpiod  
+- MQTT  
+- Home Assistant  
 
 ---
 
-## Installation
+## Installation / Usage
 
-Copy the script to your device and run:
+### 1. Run interactively (recommended first)
 
-```bash
-sudo bash ampswitch.sh
+sudo ./ampswitch.sh
+
+You will be guided through:
+- relay mode selection  
+- GPIO pin selection  
+- pulse durations  
+- stop delay  
+- poll interval  
+
+Then the script enters TEST MODE.
+
+---
+
+### 2. Test mode
+
+During test mode:
+- Play / stop music in Volumio  
+- Watch the relay behavior  
+- Press CTRL+C to exit test mode  
+
+After exiting test mode, you can:
+- adjust settings again  
+- install as a systemd service  
+- exit without installing  
+
+---
+
+### 3. Install as service
+
+If you choose to install:
+- configuration is saved to /opt/ampswitch/ampswitch.conf  
+- service file is created: ampswitch.service  
+- service starts automatically on boot  
+
+Check status:
+
+systemctl status ampswitch
+
+View logs:
+
+journalctl -u ampswitch
+
+---
+
+## Management Menu (when already installed)
+
+Re-running the script shows:
+
+AmpSwitch appears to be installed.
+1) Reconfigure / Test
+2) Show current config
+3) Uninstall
+4) Exit
+
+### Show current config
+Displays the exact configuration used by the service.
+
+### Uninstall
+- Stops and disables the service  
+- Removes all installed files  
+- Leaves your system clean  
+
+---
+
+## Safety Notes
+
+- Use optocoupled relay modules  
+- Never connect GPIO directly to mains voltage  
+- Only one process should control a GPIO pin  
+- Do not share GPIO pins with other Volumio plugins  
+
+---
+
+## Why raspi-gpio only?
+
+On Volumio:
+- sysfs GPIO is unreliable or disabled  
+- gpiod may be unavailable on older releases  
+- raspi-gpio is stable, native, and intended for this use  
+
+This script follows Volumio’s real GPIO constraints, not generic Linux assumptions.
+
+---
+
+## License
+
+MIT License  
+Use it, modify it, share it.
+
+---
+
+## Author
+
+Created and tested by Marcin  
+Built through real-world testing on Volumio with physical amplifiers and relays.
